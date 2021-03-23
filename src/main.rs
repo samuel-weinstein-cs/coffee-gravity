@@ -66,23 +66,6 @@ impl Planet {
         self.add_force(f*subtract_vec);
         // }
     }
-    fn merge(&mut self, others: Vec<Planet>){
-        let mut len = 1.0;
-        let mut vel_sum = self.vel;
-        let mut pos_sum = self.pos.coords;//'possum!
-        let mut mass_sum = self.mass;
-        for planet in others {
-            len += 1.0;
-            vel_sum += planet.vel;
-            pos_sum += planet.pos.coords;
-            mass_sum += planet.mass;
-        }
-        vel_sum /= len;
-        pos_sum /= len;
-        self.vel = vel_sum;
-        self.pos.coords = pos_sum;
-        self.mass = mass_sum;
-    }
 }
 
 struct MyGame {
@@ -140,41 +123,6 @@ impl Game for MyGame {
         for planet in self.planets.iter_mut() {
             planet.timestep();
         }
-        let mut len = self.planets.len();
-        let mut i = 0;
-        let mut merge_list = Vec::new();
-        while i < len {
-            len = self.planets.len();
-            if i >= len {i = 0};
-            // println!("{:?}", i);
-            let addr = &self.planets[i] as *const Planet;
-            let compare = &self.planets[i].clone();
-            let merge: Vec<_> = self.planets.drain_filter(|p| {
-                // println!("{:?}, {:?}", p as *const Planet, addr);
-                if p as *const Planet == addr {
-                    return false
-                }
-
-                let distance = nalgebra::distance(&p.pos, &compare.pos);
-
-                if distance < (p.mass.sqrt() + compare.mass.sqrt()) * SIZE {
-                    true
-                } else {
-                    false
-                }
-            }).collect();
-
-            merge_list.push((compare.clone(), merge));
-
-            // println!("{:?}", pissvortex);
-            i+=1;
-        }
-
-        let merged_planets: Vec<_> = merge_list.into_iter().map(|mut merger| {
-            merger.0.merge(merger.1);
-            merger.0
-        }).collect();
-        println!("{:?}", merged_planets);
     }
 
     fn draw(&mut self, frame: &mut Frame, _timer: &Timer) {
