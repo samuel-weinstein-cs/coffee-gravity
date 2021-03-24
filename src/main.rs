@@ -4,6 +4,8 @@ use coffee::load::Task;
 use coffee::{Game, Result, Timer};
 use coffee::input::mouse::*;
 use nalgebra::{Point2, Vector2};
+use std::rc::Rc;
+use std::cell::RefCell;
 
 const TIMESTEP: f32 = 0.1;
 const G: f32 = 1.0; // gravitational constant
@@ -70,7 +72,7 @@ impl Planet {
 
 struct MyGame {
     // Your game state and assets go here...
-    planets: Vec<Planet>,
+    planets: Vec<Rc<RefCell<Planet>>>,
     mouse: Point2<f32>,
     click: Option<Point2<f32>>
 }
@@ -98,7 +100,7 @@ impl Game for MyGame {
         } else if self.click.is_some() && !mouse_pressed {//click up?
             let vel = self.mouse.coords - self.click.unwrap().coords;
             let new_planet = Planet::new(self.click.unwrap(), vel * MULT, 10.0);
-            self.planets.push(new_planet);
+            self.planets.push(Rc::new(RefCell::new(new_planet)));
             None
         } else {//no change
             self.click //thx rust optimizer :P
@@ -110,20 +112,19 @@ impl Game for MyGame {
 
         // println!("pos: {} click: {:?}", self.mouse, self.click);
         for planet in self.planets.iter_mut() {
+            let mut planet = planet.borrow_mut();
             planet.timestep();
         }
         /* this runs in O(n^2) :/ n-body is notoriously difficult, even
         solutions like this but this is prob a bit naïve*/
-        for i in 0..self.planets.len() {
-            let planet1 = &self.planets[i].clone();
+        for i in 0..self.planets.len() {// who the fuck knows if this will work!!! prob will crash :) love Rc<RefCell<_>> lmaoo
+            let planet1 = &self.planets[i].borrow().clone();
             for (j, planet2) in self.planets.iter_mut().enumerate() {
                 if j!=i{
-                    planet2.attract(planet1);
+                    planet2.borrow_mut().attract(planet1);
                 }
             }
         }
-
-
     }
 
     fn draw(&mut self, frame: &mut Frame, _timer: &Timer) {
@@ -146,6 +147,7 @@ impl Game for MyGame {
          }
 
         for planet in self.planets.iter() {// draw planets
+            let planet = planet.borrow();
             let circle = Shape::Circle{center: planet.pos, radius: planet.mass.sqrt() * SIZE};
             let acc = Shape::Polyline{points:vec![planet.pos, planet.pos + planet.acc*200.0]};
             let vel = Shape::Polyline{points:vec![planet.pos, planet.pos + planet.vel*6.0]};
