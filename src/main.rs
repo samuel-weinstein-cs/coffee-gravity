@@ -1,5 +1,5 @@
 #![feature(drain_filter)]
-use coffee::graphics::{Color, Frame, Window, WindowSettings, Mesh, Shape};
+use coffee::graphics::{Color, Frame, Window, WindowSettings, Mesh, Shape, Transformation};
 use coffee::load::Task;
 use coffee::{Game, Result, Timer};
 use coffee::input::mouse::*;
@@ -45,7 +45,7 @@ impl Planet {
         // println!("vel: {:?} += acc: {:?} * timestep: {:?}", self.vel, self.acc, TIMESTEP);
         self.vel += self.acc * TIMESTEP;
         // println!("vel: {:?}", self.vel);
-        self.pos += self.vel;
+        self.pos += self.vel * TIMESTEP;
         self.acc = Vector2::new(0.0,0.0);
     }
     fn attract(&mut self, other: &Planet) {
@@ -109,7 +109,10 @@ impl Game for MyGame {
     fn update(&mut self, _window: &Window) {
 
         // println!("pos: {} click: {:?}", self.mouse, self.click);
-        /* this runs in O(n^2) :/ n-body is notoriously difficult, even discrete numerical
+        for planet in self.planets.iter_mut() {
+            planet.timestep();
+        }
+        /* this runs in O(n^2) :/ n-body is notoriously difficult, even
         solutions like this but this is prob a bit naïve*/
         for i in 0..self.planets.len() {
             let planet1 = &self.planets[i].clone();
@@ -120,23 +123,41 @@ impl Game for MyGame {
             }
         }
 
-        for planet in self.planets.iter_mut() {
-            planet.timestep();
-        }
+
     }
 
     fn draw(&mut self, frame: &mut Frame, _timer: &Timer) {
+        // const VEC_LEN: f32 = 0.01; // velocity scale factor
+
+        let mut target = frame.as_target();
+        target.clear(Color::BLACK);
+
+        let transformation = Transformation::scale(1.0);
+        let mut camera = target.transform(transformation);
+
+
         // Clear the current frame
-        frame.clear(Color::BLACK);
 
         let mut mesh = Mesh::new();
 
-        for planet in self.planets.iter() {
+         if let Some(click) = self.click {
+             let velocity_vec = Shape::Polyline{points:vec![self.mouse, click]};
+             mesh.stroke(velocity_vec, Color::GREEN,2.0);
+         }
+
+        for planet in self.planets.iter() {// draw planets
             let circle = Shape::Circle{center: planet.pos, radius: planet.mass.sqrt() * SIZE};
+            let acc = Shape::Polyline{points:vec![planet.pos, planet.pos + planet.acc*200.0]};
+            let vel = Shape::Polyline{points:vec![planet.pos, planet.pos + planet.vel*6.0]};
+
             mesh.fill(circle, Color::WHITE);
+            mesh.stroke(acc, Color::BLUE, 2.0);
+            mesh.stroke(vel, Color::GREEN, 2.0);
+
+
         }
         // Draw your game here. Check out the `graphics` module!
-        mesh.draw(&mut frame.as_target());
+        mesh.draw(&mut camera);
     }
 
     const TICKS_PER_SECOND: u16 = 60;
