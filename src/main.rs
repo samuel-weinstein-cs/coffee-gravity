@@ -118,10 +118,15 @@ impl Game for MyGame {
         /* this runs in O(n^2) :/ n-body is notoriously difficult, even
         solutions like this but this is prob a bit naïve*/
         for i in 0..self.planets.len() {// who the fuck knows if this will work!!! prob will crash :) love Rc<RefCell<_>> lmaoo
-            let planet1 = &self.planets[i].borrow().clone();
+            let planet1 = &self.planets[i].clone();
             for (j, planet2) in self.planets.iter_mut().enumerate() {
                 if j!=i{
-                    planet2.borrow_mut().attract(planet1);
+                    planet2.borrow_mut().attract(&planet1.borrow());
+                    let r1 = planet1.borrow().mass.sqrt() * SIZE;
+                    let r2 = planet2.borrow().mass.sqrt() * SIZE;
+                    let p1 = planet1.borrow().pos;
+                    let p2 = planet2.borrow().pos;
+
                 }
             }
         }
