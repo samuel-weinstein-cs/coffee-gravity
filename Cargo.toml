@@ -10,3 +10,5 @@ edition = "2018"
 
 coffee = { version = "0.4", features = ["opengl"] }
 nalgebra = "0.18.1"
+ [features]
+ drain_filter = []
