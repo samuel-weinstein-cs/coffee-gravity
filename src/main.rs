@@ -8,14 +8,14 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-const TIMESTEP: f32 = 0.0001;
+const TIMESTEP: f32 = 0.1;
 const G: f32 = 1.0; // gravitational constant
 const SIZE: f32 = 3.0; //size multiplier
 
 fn main() -> Result<()> {
     MyGame::run(WindowSettings {
         title: String::from("G R A V I T Y!!!"),
-        size: (1280, 1024),
+        size: (640, 480),
         resizable: true,
         fullscreen: false,
         maximized: false,
@@ -142,7 +142,7 @@ impl Game for MyGame {
         let mut merge_map: HashMap<RefPlanet, Rc<RefCell<Vec<_>>>> = HashMap::new();
         // let merge_vec = Vec::new();
 
-        println!("STARTING MERGES!!!!!!!!!!!!");
+        // println!("STARTING MERGES!!!!!!!!!!!!");
         /* this runs in O(n^2) :/ n-body is notoriously difficult, even
         solutions like this but this is prob a bit naïve*/
         for i in 0..self.planets.len() {
@@ -156,7 +156,7 @@ impl Game for MyGame {
                     let p1 = planet1.borrow().pos;
                     let p2 = planet2.borrow().pos;
                     if nalgebra::distance(&p1, &p2) < r1 + r2 {
-                        println!("merge {:?}\nand   {:?}", planet1.as_ptr(), planet2.as_ptr());
+                        // println!("merge {:?}\nand   {:?}", planet1.as_ptr(), planet2.as_ptr());
                         // merge_map.insert(planet1.clone().into(), "testing!");
                         let value1 = merge_map.get(&planet1.clone().into()).cloned();
                         let value2 = merge_map.get(&planet2.clone().into()).cloned();
@@ -164,7 +164,7 @@ impl Game for MyGame {
                             //REMEMBER: Every clone of an Rc is just a pointer
                             (None, None) => {
                                 //neither exist yet
-                                println!("neither exist yet");
+                                // println!("neither exist yet");
                                 let v =
                                     Rc::new(RefCell::new(vec![planet1.clone(), planet2.clone()])); //god damn it rust u really love memory safety
 
@@ -174,22 +174,22 @@ impl Game for MyGame {
                             }
                             (None, Some(v)) => {
                                 //p2 exists but p1 doesnt
-                                println!("p2 exists but p1 doesnt");
+                                // println!("p2 exists but p1 doesnt");
                                 v.borrow_mut().push(planet1.clone());
                                 merge_map.insert(planet1.clone().into(), v.clone());
                             }
                             (Some(v), None) => {
                                 //p1 exists but p2 doesnt
-                                println!("p1 exists but p2 doesnt");
+                                // println!("p1 exists but p2 doesnt");
                                 v.borrow_mut().push(planet2.clone());
                                 merge_map.insert(planet2.clone().into(), v.clone());
                             }
                             (Some(v1), Some(v2)) => {
                                 //both already exist
-                                print!("both already exist, ");
+                                // print!("both already exist, ");
                                 if !Rc::ptr_eq(&v1, &v2) {
                                     //if they are pointing to seperate vecs
-                                    println!("and they are pointing to seperate vecs");
+                                    // println!("and they are pointing to seperate vecs");
 
                                     let old = &mut v2.take(); //hopefully this just copies the ref to the vec
                                     v1.borrow_mut().append(old); //ughhhh this will run too many times :(
@@ -211,7 +211,7 @@ impl Game for MyGame {
                                     //     vector1.push(planet);
                                     // }
                                 } else {
-                                    println!("and they are pointing to the same vec")
+                                    // println!("and they are pointing to the same vec")
                                 }
                             }
                         }
@@ -228,6 +228,23 @@ impl Game for MyGame {
                     }
                 }
             }
+        }
+        println!("parsing merges");
+        for (key, val) in merge_map {
+            let mut vec = val.borrow_mut();
+            println!("merging:");
+            for planet in vec.drain(..) {
+                let ref_cell_addr: *const _ = RefCell::as_ptr(planet.as_ref());
+                println!("{:?}", ref_cell_addr);
+            }
+            self.planets.retain(|e| {
+                //retain is probably not the most efficient thing to put here 乁໒( ͡◕ ᴥ ◕͡ )७ㄏ
+                let x = !Rc::ptr_eq(&key.0, e);
+                if !x {
+                    println!("found {:?} in list, removing", e.as_ptr());
+                }
+                x
+            });
         }
         // println!("{:#?}", merge_map);
     }
@@ -277,5 +294,5 @@ impl Game for MyGame {
     const TICKS_PER_SECOND: u16 = 60;
 
     const DEBUG_KEY: Option<coffee::input::keyboard::KeyCode> =
-        Some(coffee::input::keyboard::KeyCode::F12);
+        Some(coffee::input::keyboard::KeyCode::Grave);
 }
