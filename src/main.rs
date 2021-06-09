@@ -8,7 +8,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-const TIMESTEP: f32 = 0.1;
+const TIMESTEP: f32 = 0.33;
 const G: f32 = 1.0; // gravitational constant
 const SIZE: f32 = 3.0; //size multiplier
 
@@ -115,7 +115,7 @@ impl Game for MyGame {
     }
 
     fn interact(&mut self, input: &mut Self::Input, _window: &mut Window) {
-        const MULT: f32 = 0.01; // velocity scale factor
+        const MULT: f32 = 0.1; // velocity scale factor
         self.mouse = input.cursor_position();
         let mouse_pressed = input.is_button_pressed(Button::Left);
         self.click = if self.click.is_none() && mouse_pressed {
@@ -124,7 +124,7 @@ impl Game for MyGame {
         } else if self.click.is_some() && !mouse_pressed {
             //click up?
             let vel = self.mouse.coords - self.click.unwrap().coords;
-            let new_planet = Planet::new(self.click.unwrap(), vel * MULT, 10.0);
+            let new_planet = Planet::new(self.click.unwrap(), vel * MULT, 1.0);
             self.planets.push(Rc::new(RefCell::new(new_planet)));
             None
         } else {
@@ -229,15 +229,40 @@ impl Game for MyGame {
                 }
             }
         }
-        println!("parsing merges");
         for (key, val) in merge_map {
+            println!("bro");
             let mut vec = val.borrow_mut();
-            println!("merging:");
-            for planet in vec.drain(..) {
-                let ref_cell_addr: *const _ = RefCell::as_ptr(planet.as_ref());
-                println!("{:?}", ref_cell_addr);
+            let mut new_planet = Planet::new(Point2::new(0.0, 0.0), Vector2::new(0.0, 0.0), 0.0);
+            let len = vec.len() as f32;
+            if len > 1.0 {
+                println!("merging:");
+                for p in vec.drain(..) {
+                    let planet = p.borrow();
+                    let pos = planet.pos.coords;
+                    let vel = planet.vel;
+                    let mass = planet.mass;
+                    let ref_cell_addr: *const _ = RefCell::as_ptr(p.as_ref());
+                    println!(
+                        "{:?} p: {:?} v: {:?} m: {:?}",
+                        ref_cell_addr, pos, vel, mass
+                    );
+
+                    new_planet.pos.coords += pos * mass; // should be weighted
+                    new_planet.vel += vel * mass; //should be weighted, p = m v so v = p / m
+                    new_planet.mass += mass;
+                }
+                new_planet.pos.coords /= new_planet.mass; //idk if this will work
+                new_planet.vel /= new_planet.mass; //cancel out the mass, leaving momentum??
+                println!(
+                    "New: p: {:?} v: {:?} m: {:?}",
+                    new_planet.pos, new_planet.vel, new_planet.mass
+                );
+                println!("pre-push");
+                self.planets.push(Rc::new(RefCell::new(new_planet)));
+                println!("post-push");
             }
             self.planets.retain(|e| {
+                //remove the merged planets from the list
                 //retain is probably not the most efficient thing to put here 乁໒( ͡◕ ᴥ ◕͡ )७ㄏ
                 let x = !Rc::ptr_eq(&key.0, e);
                 if !x {
